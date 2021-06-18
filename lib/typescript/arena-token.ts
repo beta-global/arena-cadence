@@ -1,24 +1,9 @@
 import * as fcl from "@onflow/fcl";
 import * as t from "@onflow/types";
-import {Transaction, Script} from "./template"
-import * as fs from "fs";
-import * as path from "path";
+import {Transaction, Script, resolveImports, readTemplate} from "./template";
 
 
 
-function resolveImports(tpl: string, mappings: Map<string, string>): string {
-	for (let [contract, address] of mappings) {
-		tpl = tpl.replace(`{{ import "${contract}" }}`, `import "${contract}" from ${fcl.withPrefix(address)}`)
-	}
-	return tpl
-}
-
-function readTemplate(tplpath: string): string {
-	return fs.readFileSync(
-			path.join(__dirname, `../../../${tplpath}`),
-			"utf8"
-		)
-}
 
 class ArenaTokenTemplates {
 	constructor(
