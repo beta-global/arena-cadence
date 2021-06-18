@@ -1,9 +1,8 @@
-import { ArenaTokenService } from "./arena-token";
-console.log("hello")
+import { ArenaTokenTemplates } from "./arena-token";
 
-const arenaTokenService = new ArenaTokenService(
-	"0xABC",
-	"0xDEF"
+const arenaTokenService = new ArenaTokenTemplates(
+	"0xf8d6e0586b0a20c7",
+	"0x01cf0e2f2f715450"
 );
 
 const tx = arenaTokenService.sendArena("0x123", 100);

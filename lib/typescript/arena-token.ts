@@ -1,21 +1,10 @@
-// @ts-ignore
 import * as fcl from "@onflow/fcl";
 import * as t from "@onflow/types";
+import {Transaction, Script} from "./template"
 import * as fs from "fs";
 import * as path from "path";
 
-type Transaction = {
-	name: string
-	code: string
-	gasLimit: Number
-	args: fcl.arg[]
-}
 
-type Script = {
-	name: string
-	code: string
-	args: fcl.arg[]
-}
 
 function resolveImports(tpl: string, mappings: Map<string, string>): string {
 	for (let [contract, address] of mappings) {
@@ -31,7 +20,7 @@ function readTemplate(tplpath: string): string {
 		)
 }
 
-class ArenaTokenService {
+class ArenaTokenTemplates {
 	constructor(
 		private readonly fungibleTokenAddress: string,
 		private readonly arenaTokenAddress: string,
@@ -45,7 +34,7 @@ class ArenaTokenService {
 		]));
 		
 		return {
-			name: "Send Arena",
+			name: "SendArena",
 			code: code,
 			args: [
 				fcl.arg(recipient, t.Address),
@@ -63,7 +52,7 @@ class ArenaTokenService {
 		]));
 		
 		return {
-			name: "Send Arena",
+			name: "SetupAccount",
 			code: code,
 			args: [
 				fcl.arg(recipient, t.Address),
@@ -80,7 +69,7 @@ class ArenaTokenService {
 		]));
 		
 		return {
-			name: "Send Arena",
+			name: "GetBalance",
 			code: code,
 			args: [
 				fcl.arg(target, t.Address),
@@ -90,4 +79,4 @@ class ArenaTokenService {
 
 }
 
-export { ArenaTokenService };
+export { ArenaTokenTemplates };
