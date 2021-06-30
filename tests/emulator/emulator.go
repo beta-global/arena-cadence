@@ -1,4 +1,4 @@
-package tests
+package emulator
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -273,4 +274,73 @@ func (e *Emulator) DeployContract(owner flow.Address, name string, source string
 	// Add to mapping of tracked contracts
 	e.Contracts[name] = owner
 	return nil
+}
+
+const createAccountTemplate = `
+transaction(publicKeys: [String], contracts: {String: String}) {
+       prepare(signer: AuthAccount) {
+               let acct = AuthAccount(payer: signer)
+
+               for key in publicKeys {
+                       acct.addPublicKey(key.decodeHex())
+               }
+
+               for contract in contracts.keys {
+                       acct.contracts.add(name: contract, code: contracts[contract]!.decodeHex())
+               }
+       }
+}
+`
+
+// AddAccount creates a new flow account utilizing a new randomly generated key.
+// The private key is tracked by the emulator to facilitate signing transactions.
+func (e *Emulator) AddAccount() (flow.Address, error) {
+
+	// random seed
+	rand.Seed(time.Now().UnixNano())
+	randBuf := make([]byte, 32)
+	rand.Read(randBuf)
+
+	privkey, err := crypto.GeneratePrivateKey(crypto.ECDSA_P256, randBuf)
+	if err != nil {
+		return flow.EmptyAddress, fmt.Errorf("Unable to create private key from seed: %v", err)
+	}
+
+	// construct an account key from the public key
+	pubkey := privkey.PublicKey()
+	accountKey := flow.NewAccountKey().
+		SetPublicKey(pubkey).
+		SetHashAlgo(crypto.SHA3_256).
+		SetWeight(flow.AccountKeyWeightThreshold)
+	pubkeys := make([]cadence.Value, 1)
+	pubkeys[0] = cadence.NewString(hex.EncodeToString(accountKey.Encode()))
+
+	// Convert to cadence specific format
+	cadencePublicKeys := cadence.NewArray(pubkeys)
+	cadenceContracts := cadence.NewDictionary(make([]cadence.KeyValuePair, 0))
+
+	tx := flow.NewTransaction().
+		SetScript([]byte(createAccountTemplate)).
+		AddRawArgument(jsoncdc.MustEncode(cadencePublicKeys)).
+		AddRawArgument(jsoncdc.MustEncode(cadenceContracts))
+
+	serviceAcct := e.ServiceAccount
+	signers := TxSigners{
+		Proposer:    serviceAcct,
+		Payer:       serviceAcct,
+		Authorizers: []flow.Address{serviceAcct},
+	}
+	e.SignTx(signers, tx)
+
+	result := e.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		return flow.EmptyAddress, fmt.Errorf("Unable to create new account: %v", result.Error)
+	}
+	accountCreatedEvent := flow.AccountCreatedEvent(result.Events[0])
+	newAcctAddr := accountCreatedEvent.Address()
+
+	// Track the key of new account to simplify testing
+	e.Privkeys[newAcctAddr] = privkey
+
+	return newAcctAddr, nil
 }
