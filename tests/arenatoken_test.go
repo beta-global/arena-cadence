@@ -29,8 +29,34 @@ func TestCreateAccount(t *testing.T) {
 	defer teardown()
 
 	newAcct := AddAccount(t, em)
-	if newAcct != flow.EmptyAddress {
+	if newAcct == flow.EmptyAddress {
 		t.Fatalf("Expected non-empty address")
+	}
+}
+
+func TestSetupAccount(t *testing.T) {
+	em, teardown := emulator.NewUnit(t, "3569")
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+
+	// create a new account and run the setup_account transaction
+	newAcct := AddAccount(t, em)
+
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	tx := txRenderer.SetupAccount()
+	signers := emulator.TxSigners{
+		Proposer:    newAcct,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{newAcct},
+	}
+	em.SignTx(signers, tx)
+
+	result := em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("setup_account tx execution: %v", result.Error)
 	}
 
 }

@@ -20,34 +20,33 @@ transaction {
         // Create a new ArenaToken Vault and put it in storage
         signer.save(
             <-ArenaToken.createEmptyVault(),
-            to: /storage/arenaTokenVault
+            to: ArenaToken.VaultStoragePath
         )
 
         // Create a public capability to the Vault that only exposes
         // the deposit function through the Receiver interface
         signer.link<&ArenaToken.Vault{FungibleToken.Receiver}>(
-            /public/arenaTokenReceiver,
-            target: /storage/arenaTokenVault
+            ArenaToken.ReceiverPublicPath,
+            target: ArenaToken.VaultStoragePath
         )
 
         // Create a public capability to the Vault that only exposes
         // the balance field through the Balance interface
         signer.link<&ArenaToken.Vault{FungibleToken.Balance}>(
-            /public/arenaTokenBalance,
-            target: /storage/arenaTokenVault
+            ArenaToken.BalancePublicPath,
+            target: ArenaToken.VaultStoragePath
         )
 
     }
 
     post {
 
-        getAccount(self.addr).getCapability(/public/arenaTokenReceiver)
+        getAccount(self.addr).getCapability(ArenaToken.ReceiverPublicPath)
             .check<&ArenaToken.Vault{FungibleToken.Receiver}>():
                 "Receiver capability not created correctly"
 
-        getAccount(self.addr).getCapability(/public/arenaTokenBalance)
+        getAccount(self.addr).getCapability(ArenaToken.BalancePublicPath)
             .check<&ArenaToken.Vault{FungibleToken.Balance}>():
                 "Balance capability not created correctly"
     }
-}`
-
+}
