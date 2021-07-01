@@ -9,12 +9,14 @@ import (
 var (
 	contractTemplate     string
 	setupAccountTemplate string
+	mintArenaTemplate    string
 )
 
 // read templates from embedded fs
 func init() {
 	contractTemplate = readContractTemplate("contracts/arenatoken.cdc")
 	setupAccountTemplate = readTxTemplate("transactions/arenaToken/setup_account.cdc")
+	mintArenaTemplate = readTxTemplate("transactions/arenaToken/mint_arena.cdc")
 }
 
 func readContractTemplate(path string) string {
