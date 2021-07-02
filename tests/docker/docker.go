@@ -7,7 +7,6 @@ package docker
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"net"
 	"os/exec"
 	"testing"
@@ -25,7 +24,6 @@ func StartContainer(t *testing.T, image string, port string, args ...string) *Co
 	arg = append(arg, args...)
 	arg = append(arg, image)
 
-	fmt.Println(arg)
 	cmd := exec.Command("docker", arg...)
 	var out bytes.Buffer
 	cmd.Stdout = &out
@@ -54,9 +52,9 @@ func StartContainer(t *testing.T, image string, port string, args ...string) *Co
 		Host: net.JoinHostPort(ip, randPort),
 	}
 
-	t.Logf("Image:       %s", image)
-	t.Logf("ContainerID: %s", c.ID)
-	t.Logf("Host:        %s", c.Host)
+	//t.Logf("Image:       %s", image)
+	//t.Logf("ContainerID: %s", c.ID)
+	//t.Logf("Host:        %s", c.Host)
 
 	return &c
 }
@@ -105,7 +103,6 @@ func extractIPPort(t *testing.T, doc []map[string]interface{}, port string) (str
 	if len(list) < 1 {
 		t.Fatal("could not get network ports/tcp list settings")
 	}
-	t.Logf("LIST: %+v", list)
 	data, exists := list[0].(map[string]interface{})
 	if !exists {
 		t.Fatal("could not get network ports/tcp list data")

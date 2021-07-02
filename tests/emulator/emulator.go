@@ -1,13 +1,10 @@
 package emulator
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"math/rand"
-	"os"
 	"testing"
 	"time"
 
@@ -48,12 +45,7 @@ type Emulator struct {
 // NewUnit starts an instance of the flow emulator in a docker container and
 // returns a teardown function that should be invoked after the test is complete.
 // The emulator has no initial state other than several base flow contracts.
-func NewUnit(t *testing.T, port string) (em *Emulator, teardown func()) {
-
-	// reassign input/output for duration of the test
-	r, w, _ := os.Pipe()
-	old := os.Stdout
-	os.Stdout = w
+func NewUnit(t *testing.T, port string, dockerLogsOnFail bool) (em *Emulator, teardown func()) {
 
 	// start emulator container
 	// TODO(dave): make port injectable so we can run tests in parallel
@@ -70,9 +62,10 @@ func NewUnit(t *testing.T, port string) (em *Emulator, teardown func()) {
 	if err != nil {
 		t.Fatalf("Opening rpc connection: %v", err)
 	}
+
+	t.Log("Establishing connection to emulator ...")
 	var success bool
 	for tries := 15; tries > 0; tries-- {
-		t.Log("Establishing connection to emulator ...")
 		if err := client.Ping(context.Background()); err != nil {
 			time.Sleep(200 * time.Millisecond)
 			continue
@@ -81,7 +74,9 @@ func NewUnit(t *testing.T, port string) (em *Emulator, teardown func()) {
 		break
 	}
 	if !success {
-		docker.DumpContainerLogs(t, c.ID)
+		if dockerLogsOnFail {
+			docker.DumpContainerLogs(t, c.ID)
+		}
 		docker.StopContainer(t, c.ID)
 		t.Fatalf("Unable to connect to emulator")
 	}
@@ -92,19 +87,11 @@ func NewUnit(t *testing.T, port string) (em *Emulator, teardown func()) {
 		t.Helper()
 
 		// Dump container logs if the test failed
-		if t.Failed() {
+		if t.Failed() && dockerLogsOnFail {
 			docker.DumpContainerLogs(t, c.ID)
 		}
 
 		docker.StopContainer(t, c.ID)
-
-		w.Close()
-		var buf bytes.Buffer
-		io.Copy(&buf, r)
-		os.Stdout = old
-		fmt.Println("******************** START LOGS ********************")
-		fmt.Print(buf.String())
-		fmt.Println("******************** END LOGS ********************")
 	}
 
 	// Add service account key and known contracts
@@ -246,7 +233,7 @@ transaction(name: String, code: String) {
 	}
 }`
 
-func (e *Emulator) DeployContract(owner flow.Address, name string, source string) error {
+func (e *Emulator) DeployContract(owner flow.Address, name string, source string) (*flow.TransactionResult, error) {
 	tx := flow.NewTransaction().
 		SetScript([]byte(deployContractTemplate)).
 		AddRawArgument(jsoncdc.MustEncode(cadence.NewString(name))).
@@ -259,21 +246,16 @@ func (e *Emulator) DeployContract(owner flow.Address, name string, source string
 		Payer:       serviceAcct,
 	}
 	if err := e.SignTx(signers, tx); err != nil {
-		return fmt.Errorf("Failed to sign Tx: %v", err)
+		return nil, fmt.Errorf("Failed to sign Tx: %v", err)
 	}
 
 	result := e.ExecuteTxWaitForSeal(tx)
-	if result.Error != nil {
-		return fmt.Errorf("Executing contract deploy: %v", result.Error)
-	}
-	fmt.Printf("EVENTS^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n")
-	for _, e := range result.Events {
-		fmt.Printf("%s: %+v\n", e.Type, e.Value)
-	}
 
-	// Add to mapping of tracked contracts
-	e.Contracts[name] = owner
-	return nil
+	// Add to mapping of tracked contracts if deploy succeeded
+	if result.Error == nil {
+		e.Contracts[name] = owner
+	}
+	return result, result.Error
 }
 
 const createAccountTemplate = `

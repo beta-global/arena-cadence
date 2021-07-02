@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"testing"
 
@@ -11,23 +12,25 @@ import (
 	"github.com/onflow/flow-go-sdk"
 )
 
+var dockerLogsOnFail = flag.Bool("dockerLogs", false, "Print docker container logs on test failure")
+
 func TestContractEmbed(t *testing.T) {
 	deploy := arenatoken.Contract(flow.HexToAddress(emulator.FungibleTokenAddr))
 	fmt.Println(deploy)
 }
 
 func TestContractDeploy(t *testing.T) {
-	em, teardown := emulator.NewUnit(t, "3569")
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
 
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
-	if err := em.DeployContract(em.ServiceAccount, "ArenaToken", contractSource); err != nil {
+	if _, err := em.DeployContract(em.ServiceAccount, "ArenaToken", contractSource); err != nil {
 		t.Fatalf("failed to deploy contract: %v", err)
 	}
 }
 
 func TestCreateAccount(t *testing.T) {
-	em, teardown := emulator.NewUnit(t, "3569")
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
 
 	newAcct := AddAccount(t, em)
@@ -37,7 +40,7 @@ func TestCreateAccount(t *testing.T) {
 }
 
 func TestSetupAccount(t *testing.T) {
-	em, teardown := emulator.NewUnit(t, "3569")
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
 
 	// Deploy ArenaToken contract to service account
@@ -65,7 +68,7 @@ func TestSetupAccount(t *testing.T) {
 
 func TestMintArena(t *testing.T) {
 
-	em, teardown := emulator.NewUnit(t, "3569")
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
 
 	// Deploy ArenaToken contract to service account
@@ -90,7 +93,12 @@ func TestMintArena(t *testing.T) {
 		if result.Error != nil {
 			t.Fatalf("mint_arena tx execution: %v", result.Error)
 		}
-		// TODO(dave): balance check
+
+		// Validate new balance
+		bal := arenaBalance(t, em, em.ServiceAccount)
+		if bal.String() != "69520.00000000" {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "69520.00000000", bal.String())
+		}
 	})
 
 	t.Run("MintToNonAdmin", func(t *testing.T) {
@@ -125,7 +133,12 @@ func TestMintArena(t *testing.T) {
 		if result.Error != nil {
 			t.Fatalf("mint_arena tx execution: %v", result.Error)
 		}
-		// TODO(dave): balance check
+
+		// Validate new balance
+		bal := arenaBalance(t, em, newAcct)
+		if bal.String() != "100.00000000" {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "100.00000000", bal.String())
+		}
 	})
 
 	t.Run("MintInvalidAmount", func(t *testing.T) {
@@ -168,7 +181,7 @@ func TestMintArena(t *testing.T) {
 
 func TestBalance(t *testing.T) {
 
-	em, teardown := emulator.NewUnit(t, "3569")
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
 
 	// Deploy ArenaToken contract to service account
@@ -176,30 +189,95 @@ func TestBalance(t *testing.T) {
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
 	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
-	tx, err := txRenderer.MintTokens(em.ServiceAccount, 100)
-	if err != nil {
-		t.Fatalf("Setting up mint transaction: %v", err)
-	}
+	t.Run("BalanceInitializedAccount", func(t *testing.T) {
 
-	signers := emulator.TxSigners{
-		Proposer:    em.ServiceAccount,
-		Payer:       em.ServiceAccount,
-		Authorizers: []flow.Address{em.ServiceAccount},
-	}
-	em.SignTx(signers, tx)
-	result := em.ExecuteTxWaitForSeal(tx)
-	if result.Error != nil {
-		t.Fatalf("mint_arena tx execution: %v", result.Error)
-	}
+		tx, err := txRenderer.MintTokens(em.ServiceAccount, 100)
+		if err != nil {
+			t.Fatalf("Setting up mint transaction: %v", err)
+		}
 
-	balanceScript, args := txRenderer.Balance(em.ServiceAccount)
-	val, err := em.Client.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
-	if err != nil {
-		t.Fatalf("Reading balance: %v", err)
-	}
+		signers := emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{em.ServiceAccount},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("mint_arena tx execution: %v", result.Error)
+		}
 
-	if val.(cadence.UFix64).String() != "69520.00000000" {
-		t.Fatalf("Expected balance: %v, got: %v", "69520.00000000", val.(cadence.UFix64).String())
-	}
+		balanceScript, args := txRenderer.Balance(em.ServiceAccount)
+		val, err := em.Client.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
+		if err != nil {
+			t.Fatalf("Reading balance: %v", err)
+		}
 
+		if val.(cadence.UFix64).String() != "69520.00000000" {
+			t.Fatalf("Expected balance: %v, got: %v", "69520.00000000", val.(cadence.UFix64).String())
+		}
+	})
+
+	t.Run("BalanceUninitializedAccount", func(t *testing.T) {
+
+		newAcct := AddAccount(t, em)
+
+		balanceScript, args := txRenderer.Balance(newAcct)
+		_, err := em.Client.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
+		// Expect script to fail because account does not have a vault
+		if err == nil {
+			t.Fatalf("Expected balance check to fail but did not")
+		}
+	})
+
+}
+
+func TestTransfer(t *testing.T) {
+
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+
+	t.Run("TransferInitializedAccount", func(t *testing.T) {
+
+		// create a new account and perform account setup
+		newAcct := AddAccount(t, em)
+		tx := txRenderer.SetupAccount()
+		signers := emulator.TxSigners{
+			Proposer:    newAcct,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{newAcct},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("setup_account tx execution: %v", result.Error)
+		}
+
+		amount, _ := cadence.NewUFix64("100.0")
+		// admin transfer tokens to the newly setup account
+		tx = txRenderer.Transfer(newAcct, amount)
+
+		signers = emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{em.ServiceAccount},
+		}
+		em.SignTx(signers, tx)
+		result = em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("mint_arena tx execution: %v", result.Error)
+		}
+
+		// Validate new balance
+		bal := arenaBalance(t, em, newAcct)
+		// TODO UNDO
+		if bal == amount {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", amount, bal)
+		}
+	})
 }
