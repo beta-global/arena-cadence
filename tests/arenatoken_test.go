@@ -174,7 +174,6 @@ func TestMintArena(t *testing.T) {
 		if result.Error == nil {
 			t.Fatalf("Expected mint to revert but did not")
 		}
-		// TODO(dave): balance check
 	})
 
 }
@@ -258,10 +257,9 @@ func TestTransfer(t *testing.T) {
 			t.Fatalf("setup_account tx execution: %v", result.Error)
 		}
 
-		amount, _ := cadence.NewUFix64("100.0")
 		// admin transfer tokens to the newly setup account
+		amount, _ := cadence.NewUFix64("100.0")
 		tx = txRenderer.Transfer(newAcct, amount)
-
 		signers = emulator.TxSigners{
 			Proposer:    em.ServiceAccount,
 			Payer:       em.ServiceAccount,
@@ -275,9 +273,87 @@ func TestTransfer(t *testing.T) {
 
 		// Validate new balance
 		bal := arenaBalance(t, em, newAcct)
-		// TODO UNDO
-		if bal == amount {
+		if bal != amount {
 			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", amount, bal)
+		}
+
+		// Transfer some back
+		amount, _ = cadence.NewUFix64("60.0")
+		tx = txRenderer.Transfer(em.ServiceAccount, amount)
+		signers = emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       newAcct,
+			Authorizers: []flow.Address{newAcct},
+		}
+		em.SignTx(signers, tx)
+		result = em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("mint_arena tx execution: %v", result.Error)
+		}
+
+		// Validate new balances
+		expect, _ := cadence.NewUFix64("40.0")
+		bal = arenaBalance(t, em, newAcct)
+		if bal != expect {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", expect, bal)
+		}
+	})
+
+	t.Run("TransferUnitializedAccount", func(t *testing.T) {
+
+		// create a new account and attempt to transfer tokens
+		newAcct := AddAccount(t, em)
+		amount, _ := cadence.NewUFix64("100.0")
+
+		// admin transfer tokens to the newly setup account
+		tx := txRenderer.Transfer(newAcct, amount)
+		signers := emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{em.ServiceAccount},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+
+		// Expect tx to revert because user hadn't performed setup
+		if result.Error == nil {
+			t.Fatalf("expected transfer to fail but did not")
+		}
+	})
+
+	t.Run("TransferExceedBalance", func(t *testing.T) {
+
+		// create a new account and perform account setup
+		newAcct := AddAccount(t, em)
+		tx := txRenderer.SetupAccount()
+		signers := emulator.TxSigners{
+			Proposer:    newAcct,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{newAcct},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("setup_account tx execution: %v", result.Error)
+		}
+
+		// attempt to transfer more tokens than the service account owns
+		amount, err := cadence.NewUFix64("99999999999.0")
+		if err != nil {
+			t.Fatalf("Invalid UFix64 amount: %v", err)
+		}
+		tx = txRenderer.Transfer(newAcct, amount)
+		signers = emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{em.ServiceAccount},
+		}
+		em.SignTx(signers, tx)
+		result = em.ExecuteTxWaitForSeal(tx)
+
+		// Expect tx to revert because user didn't have enough tokens
+		if result.Error == nil {
+			t.Fatalf("expected transfer to fail but did not")
 		}
 	})
 }
