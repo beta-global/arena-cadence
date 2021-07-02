@@ -5,6 +5,7 @@ import (
 
 	arenacadence "github.com/arena/arena-cadence"
 	"github.com/onflow/cadence"
+	jsoncdc "github.com/onflow/cadence/encoding/json"
 	"github.com/onflow/flow-go-sdk"
 )
 
@@ -34,4 +35,18 @@ func (r *Renderer) Balance(target flow.Address) ([]byte, []cadence.Value) {
 	script := arenacadence.Render(balanceTemplate, nil, r.contracts)
 
 	return []byte(script), []cadence.Value{arg}
+}
+
+func (r *Renderer) Transfer(recipient flow.Address, amount cadence.UFix64) *flow.Transaction {
+
+	tx := arenacadence.Render(transferTemplate, nil, r.contracts)
+
+	var buf cadence.Address
+	copy(buf[:], recipient.Bytes())
+
+	return flow.NewTransaction().
+		AddRawArgument(jsoncdc.MustEncode(cadence.NewAddress(buf))).
+		AddRawArgument(jsoncdc.MustEncode(amount)).
+		SetScript([]byte(tx)).
+		SetGasLimit(40)
 }

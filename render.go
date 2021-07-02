@@ -9,6 +9,13 @@ import (
 	"github.com/onflow/flow-go-sdk"
 )
 
+/*
+type Script struct {
+	Code []byte
+	Args []cadence.Value
+}
+*/
+
 // Render executes the provided go template file resolving the provided contract imports
 func Render(tpl string, obj interface{}, contracts map[string]flow.Address) string {
 
