@@ -16,10 +16,12 @@ func (r *Renderer) MintTokens(recipient flow.Address, amount uint64) (*flow.Tran
 	var buf [cadence.AddressLength]byte
 	copy(buf[:], recipient.Bytes())
 
-	amtFix, err := cadence.NewUFix64FromParts(int(amount), 100000000)
+	amtFix, err := cadence.NewUFix64FromParts(int(amount), 0)
 	if err != nil {
 		return nil, fmt.Errorf("Provided amount is not a valid UFix64 value: %v", err)
 	}
+
+	fmt.Printf("Debug: %s\n", amtFix.String())
 
 	return flow.NewTransaction().
 		AddRawArgument(jsoncdc.MustEncode(cadence.NewAddress(buf))).
