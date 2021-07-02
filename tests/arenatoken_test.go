@@ -1,11 +1,13 @@
 package tests
 
 import (
+	"context"
 	"fmt"
 	"testing"
 
 	"github.com/arena/arena-cadence/lib/go/arenatoken"
 	"github.com/arena/arena-cadence/tests/emulator"
+	"github.com/onflow/cadence"
 	"github.com/onflow/flow-go-sdk"
 )
 
@@ -161,5 +163,43 @@ func TestMintArena(t *testing.T) {
 		}
 		// TODO(dave): balance check
 	})
+
+}
+
+func TestBalance(t *testing.T) {
+
+	em, teardown := emulator.NewUnit(t, "3569")
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+
+	tx, err := txRenderer.MintTokens(em.ServiceAccount, 100)
+	if err != nil {
+		t.Fatalf("Setting up mint transaction: %v", err)
+	}
+
+	signers := emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result := em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("mint_arena tx execution: %v", result.Error)
+	}
+
+	balanceScript, args := txRenderer.Balance(em.ServiceAccount)
+	val, err := em.Client.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
+	if err != nil {
+		t.Fatalf("Reading balance: %v", err)
+	}
+
+	if val.(cadence.UFix64).String() != "69520.00000000" {
+		t.Fatalf("Expected balance: %v, got: %v", "69520.00000000", val.(cadence.UFix64).String())
+	}
 
 }
