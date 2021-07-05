@@ -2,8 +2,23 @@
 
 pub contract ArenaToken: FungibleToken {
 
+
+    /// Named paths
+    pub let VaultStoragePath: StoragePath
+    pub let ReceiverPublicPath: PublicPath
+    pub let BalancePublicPath: PublicPath
+    pub let AdminStoragePath: StoragePath
+
     /// Total supply of ArenaTokens in existence
     pub var totalSupply: UFix64
+
+    /// AdministratorDestroyed
+    ///
+    /// The event that is emitted when the single Administrator resource
+    /// is destroyed. This has the result of preventing any future minters
+    /// from being created, capping the max supply to the current supply + 
+    /// the outstanding capacity of any previously created minters
+    pub event AdministratorDestroyed()
 
     /// TokensInitialized
     ///
@@ -34,14 +49,6 @@ pub contract ArenaToken: FungibleToken {
     ///
     /// The event that is emitted when a new minter resource is created
     pub event MinterCreated(allowedAmount: UFix64)
-
-    // Named paths
-    //
-    pub let VaultStoragePath: StoragePath
-    pub let ReceiverPublicPath: PublicPath
-    pub let BalancePublicPath: PublicPath
-    pub let AdminStoragePath: StoragePath
-
 
     /// BurnerCreated
     ///
@@ -138,6 +145,10 @@ pub contract ArenaToken: FungibleToken {
             emit BurnerCreated()
             return <-create Burner()
         }
+
+        destroy() {
+            emit AdministratorDestroyed()
+        }
     }
 
     /// Minter
@@ -193,7 +204,8 @@ pub contract ArenaToken: FungibleToken {
 
     init() {
 
-        self.totalSupply = 69420.0
+        // initial total supply
+        self.totalSupply = 100000000000.0
 
         // Set named paths
         self.VaultStoragePath = /storage/arenaTokenVault
@@ -205,9 +217,6 @@ pub contract ArenaToken: FungibleToken {
         let admin <- create Administrator()
         self.account.save(<-admin, to: self.AdminStoragePath)
 
-
-        // TODO(dave): Move all account setup below to separate script
-        // + adjust totalSupply to 0 in initializer
 
         // Create the Vault with the total supply of tokens and save it in storage
         //

@@ -15,6 +15,8 @@ import (
 
 var dockerLogsOnFail = flag.Bool("dockerLogs", false, "Print docker container logs on test failure")
 
+const initialBalance = "100000000000.00000000"
+
 func TestContractEmbed(t *testing.T) {
 	deploy := arenatoken.Contract(flow.HexToAddress(emulator.FungibleTokenAddr))
 	fmt.Println(deploy)
@@ -94,8 +96,8 @@ func TestMintArena(t *testing.T) {
 
 		// Validate new balance
 		bal := arenaBalance(t, em, em.ServiceAccount)
-		if bal.String() != "69520.00000000" {
-			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "69520.00000000", bal.String())
+		if bal.String() != "100000000100.00000000" {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "100000000100.00000000", bal.String())
 		}
 	})
 
@@ -131,8 +133,8 @@ func TestMintArena(t *testing.T) {
 
 		// Validate new balance
 		bal := arenaBalance(t, em, newAcct)
-		if bal.String() != "100.00000000" {
-			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "100.00000000", bal.String())
+		if bal.String() != amt.String() {
+			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", amt.String(), bal.String())
 		}
 	})
 
@@ -194,8 +196,8 @@ func TestBalance(t *testing.T) {
 			t.Fatalf("Reading balance: %v", err)
 		}
 
-		if val.(cadence.UFix64).String() != "69520.00000000" {
-			t.Fatalf("Expected balance: %v, got: %v", "69520.00000000", val.(cadence.UFix64).String())
+		if val.(cadence.UFix64).String() != "100000000100.00000000" {
+			t.Fatalf("Expected balance: %v, got: %v", "100000000100.00000000", val.(cadence.UFix64).String())
 		}
 	})
 
@@ -250,7 +252,7 @@ func TestTransfer(t *testing.T) {
 		em.SignTx(signers, tx)
 		result = em.ExecuteTxWaitForSeal(tx)
 		if result.Error != nil {
-			t.Fatalf("mint_arena tx execution: %v", result.Error)
+			t.Fatalf("transfer_arena tx execution: %v", result.Error)
 		}
 
 		// Validate new balance
