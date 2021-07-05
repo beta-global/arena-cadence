@@ -9,23 +9,19 @@ import (
 	"github.com/onflow/flow-go-sdk"
 )
 
-func (r *Renderer) MintTokens(recipient flow.Address, amount uint64) (*flow.Transaction, error) {
+func (r *Renderer) MintTokens(recipient flow.Address, amount cadence.UFix64) *flow.Transaction {
 	tx := arenacadence.Render(mintArenaTemplate, nil, r.contracts)
 
 	// convert args to cadence compatible forms
 	var buf [cadence.AddressLength]byte
 	copy(buf[:], recipient.Bytes())
 
-	amtFix, err := cadence.NewUFix64FromParts(int(amount), 0)
-	if err != nil {
-		return nil, fmt.Errorf("Provided amount is not a valid UFix64 value: %v", err)
-	}
-
-	fmt.Printf("Debug: %s\n", amtFix.String())
+	fmt.Println(recipient)
+	fmt.Println(amount)
 
 	return flow.NewTransaction().
 		AddRawArgument(jsoncdc.MustEncode(cadence.NewAddress(buf))).
-		AddRawArgument(jsoncdc.MustEncode(amtFix)).
+		AddRawArgument(jsoncdc.MustEncode(amount)).
 		SetScript([]byte(tx)).
-		SetGasLimit(100), nil
+		SetGasLimit(100)
 }

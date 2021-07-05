@@ -50,3 +50,11 @@ func (r *Renderer) Transfer(recipient flow.Address, amount cadence.UFix64) *flow
 		SetScript([]byte(tx)).
 		SetGasLimit(40)
 }
+
+func (r *Renderer) TransferAdministrator(currentAdmin, newAdmin flow.Address) *flow.Transaction {
+	tx := arenacadence.Render(transferAdministratorTemplate, nil, r.contracts)
+
+	return flow.NewTransaction().
+		SetScript([]byte(tx)).
+		SetGasLimit(40)
+}

@@ -7,11 +7,12 @@ import (
 )
 
 var (
-	contractTemplate     string
-	setupAccountTemplate string
-	mintArenaTemplate    string
-	balanceTemplate      string
-	transferTemplate     string
+	contractTemplate              string
+	setupAccountTemplate          string
+	mintArenaTemplate             string
+	balanceTemplate               string
+	transferTemplate              string
+	transferAdministratorTemplate string
 )
 
 // read templates from embedded fs
@@ -21,6 +22,7 @@ func init() {
 	mintArenaTemplate = readTxTemplate("transactions/arenaToken/mint_arena.cdc")
 	balanceTemplate = readScriptTemplate("scripts/arenaToken/balance.cdc")
 	transferTemplate = readTxTemplate("transactions/arenaToken/transfer.cdc")
+	transferAdministratorTemplate = readTxTemplate("transactions/arenaToken/transfer_admin.cdc")
 }
 
 func readContractTemplate(path string) string {
