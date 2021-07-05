@@ -78,11 +78,8 @@ func TestMintArena(t *testing.T) {
 
 	t.Run("MintToAdministrator", func(t *testing.T) {
 
-		tx, err := txRenderer.MintTokens(em.ServiceAccount, 100)
-		if err != nil {
-			t.Fatalf("Setting up mint transaction: %v", err)
-		}
-
+		amt, _ := cadence.NewUFix64("100.0")
+		tx := txRenderer.MintTokens(em.ServiceAccount, amt)
 		signers := emulator.TxSigners{
 			Proposer:    em.ServiceAccount,
 			Payer:       em.ServiceAccount,
@@ -118,11 +115,8 @@ func TestMintArena(t *testing.T) {
 		}
 
 		// admin mints tokens to the newly setup account
-		tx, err := txRenderer.MintTokens(newAcct, 100)
-		if err != nil {
-			t.Fatalf("Setting up mint transaction: %v", err)
-		}
-
+		amt, _ := cadence.NewUFix64("100.0")
+		tx = txRenderer.MintTokens(newAcct, amt)
 		signers = emulator.TxSigners{
 			Proposer:    em.ServiceAccount,
 			Payer:       em.ServiceAccount,
@@ -141,16 +135,7 @@ func TestMintArena(t *testing.T) {
 		}
 	})
 
-	t.Run("MintInvalidAmount", func(t *testing.T) {
-
-		newAcct := AddAccount(t, em)
-
-		// overflow UFix64 should fail
-		_, err := txRenderer.MintTokens(newAcct, 999999999999999999)
-		if err == nil {
-			t.Fatalf("Expected input sanitation to fail but did not")
-		}
-	})
+	// TODO: Test mint greater than minter allows
 
 	t.Run("MintToUninitializedAccount", func(t *testing.T) {
 
@@ -159,10 +144,8 @@ func TestMintArena(t *testing.T) {
 
 		// admin mints tokens to the newly setup account
 		// Tx should revert because new account does not have a vault
-		tx, err := txRenderer.MintTokens(newAcct, 100)
-		if err != nil {
-			t.Fatalf("Setting up mint transaction: %v", err)
-		}
+		amt, _ := cadence.NewUFix64("100.0")
+		tx := txRenderer.MintTokens(newAcct, amt)
 
 		signers := emulator.TxSigners{
 			Proposer:    em.ServiceAccount,
@@ -190,10 +173,8 @@ func TestBalance(t *testing.T) {
 
 	t.Run("BalanceInitializedAccount", func(t *testing.T) {
 
-		tx, err := txRenderer.MintTokens(em.ServiceAccount, 100)
-		if err != nil {
-			t.Fatalf("Setting up mint transaction: %v", err)
-		}
+		amt, _ := cadence.NewUFix64("100.0")
+		tx := txRenderer.MintTokens(em.ServiceAccount, amt)
 
 		signers := emulator.TxSigners{
 			Proposer:    em.ServiceAccount,
@@ -356,4 +337,85 @@ func TestTransfer(t *testing.T) {
 			t.Fatalf("expected transfer to fail but did not")
 		}
 	})
+}
+
+func TestTransferAdmininstrator(t *testing.T) {
+
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+
+	// Check that current admin can do admin tasks, i.e. create minter
+	amount, _ := cadence.NewUFix64("1000.0")
+	tx := txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers := emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result := em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("Expected mint to succeed but did not: %v", result.Error)
+	}
+
+	// Make a new account and ensure it can't do admin tasks
+	newAcct := AddAccount(t, em)
+	tx = txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers = emulator.TxSigners{
+		Proposer:    newAcct,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{newAcct},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error == nil {
+		t.Fatalf("Expected non-admin mint to revert but did not")
+	}
+
+	// Transfer ownership of the Administrator resource to the new account
+	tx = txRenderer.TransferAdministrator(em.ServiceAccount, newAcct)
+	signers = emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount, newAcct},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("transfer_admin tx execution: %v", result.Error)
+	}
+
+	// New account should now be able to mint
+	tx = txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers = emulator.TxSigners{
+		Proposer:    newAcct,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{newAcct},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("Expected new admin to mint successfully")
+	}
+
+	// Old admin should not be able to mint
+	tx = txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers = emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error == nil {
+		t.Fatalf("Expected old admin mint to revert but did not")
+	}
+
+	// TODO: VALIDATE that new admin can do stuff and old one can't
+
 }
