@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/arena/arena-cadence/lib/go/arenatoken"
@@ -339,6 +340,66 @@ func TestTransfer(t *testing.T) {
 	})
 }
 
+func TestDestroyAdministrator(t *testing.T) {
+
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+
+	// Check that current admin can do admin tasks, i.e. create minter
+	amount, _ := cadence.NewUFix64("1000.0")
+	tx := txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers := emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result := em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("Expected mint to succeed but did not: %v", result.Error)
+	}
+
+	// Destroy the Administrator resource
+	tx = txRenderer.DestroyAdministrator()
+	signers = emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error != nil {
+		t.Fatalf("DestroyAdministrator transaction execution: %v", result.Error)
+	}
+
+	// Ensure the destruction event is emitted
+	if len(result.Events) != 1 {
+		t.Fatalf("Expected destruction event to be emitted")
+	}
+	if !strings.Contains(result.Events[0].Type, "AdministratorDestroyed") {
+		t.Fatalf("Expected AdministratorDestroyed event but got: %v", result.Events[0].Type)
+	}
+
+	// Old admin should not be able to mint
+	tx = txRenderer.MintTokens(em.ServiceAccount, amount)
+	signers = emulator.TxSigners{
+		Proposer:    em.ServiceAccount,
+		Payer:       em.ServiceAccount,
+		Authorizers: []flow.Address{em.ServiceAccount},
+	}
+	em.SignTx(signers, tx)
+	result = em.ExecuteTxWaitForSeal(tx)
+	if result.Error == nil {
+		t.Fatalf("Expected old admin mint to revert but did not")
+	}
+
+}
+
 func TestTransferAdmininstrator(t *testing.T) {
 
 	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
@@ -415,7 +476,5 @@ func TestTransferAdmininstrator(t *testing.T) {
 	if result.Error == nil {
 		t.Fatalf("Expected old admin mint to revert but did not")
 	}
-
-	// TODO: VALIDATE that new admin can do stuff and old one can't
 
 }
