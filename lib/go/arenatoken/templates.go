@@ -13,6 +13,7 @@ var (
 	balanceTemplate               string
 	transferTemplate              string
 	transferAdministratorTemplate string
+	destroyAdministratorTemplate  string
 )
 
 // read templates from embedded fs
@@ -23,6 +24,7 @@ func init() {
 	balanceTemplate = readScriptTemplate("scripts/arenaToken/balance.cdc")
 	transferTemplate = readTxTemplate("transactions/arenaToken/transfer.cdc")
 	transferAdministratorTemplate = readTxTemplate("transactions/arenaToken/transfer_admin.cdc")
+	destroyAdministratorTemplate = readTxTemplate("transactions/arenaToken/destroy_admin.cdc")
 }
 
 func readContractTemplate(path string) string {

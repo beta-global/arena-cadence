@@ -58,3 +58,11 @@ func (r *Renderer) TransferAdministrator(currentAdmin, newAdmin flow.Address) *f
 		SetScript([]byte(tx)).
 		SetGasLimit(40)
 }
+
+func (r *Renderer) DestroyAdministrator() *flow.Transaction {
+	tx := arenacadence.Render(destroyAdministratorTemplate, nil, r.contracts)
+
+	return flow.NewTransaction().
+		SetScript([]byte(tx)).
+		SetGasLimit(40)
+}
