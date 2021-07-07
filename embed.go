@@ -1,4 +1,7 @@
-// Package arenacadence statically embeds all the various arena cadence templates
+// Package arenacadence statically embeds all the various arena cadence templates.
+// go:embed does not support `..` in filepaths so this package exists as a compromise
+// to statically embed the cadence templates while still conforming to the officially
+// recommended cadence project structure https://joshuahannan.medium.com/how-i-organize-my-cadence-projects-75b811b700d9
 package arenacadence
 
 import (
@@ -6,12 +9,5 @@ import (
 )
 
 // Statically embed all cadence templates within the module
-
-//go:embed contracts
-var Contracts embed.FS
-
-//go:embed transactions
-var Transactions embed.FS
-
-//go:embed scripts
-var Scripts embed.FS
+//go:embed cadence
+var Cadence embed.FS
