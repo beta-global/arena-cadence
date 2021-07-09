@@ -14,6 +14,7 @@ var (
 	transferTemplate              string
 	transferAdministratorTemplate string
 	destroyAdministratorTemplate  string
+	burnTemplate                  string
 )
 
 // read templates from embedded fs
@@ -27,6 +28,7 @@ func init() {
 	destroyAdministratorTemplate = readTemplate("cadence/transactions/arenaToken/destroy_admin.cdc")
 	transferTemplate = readTemplate("cadence/transactions/arenaToken/transfer.cdc")
 	transferAdministratorTemplate = readTemplate("cadence/transactions/arenaToken/transfer_admin.cdc")
+	burnTemplate = readTemplate("cadence/transactions/arenaToken/burn_arena.cdc")
 
 	// scripts
 	balanceTemplate = readTemplate("cadence/scripts/arenaToken/balance.cdc")

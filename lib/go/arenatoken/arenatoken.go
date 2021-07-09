@@ -66,3 +66,12 @@ func (r *Renderer) DestroyAdministrator() *flow.Transaction {
 		SetScript([]byte(tx)).
 		SetGasLimit(40)
 }
+
+func (r *Renderer) Burn(amount cadence.UFix64) *flow.Transaction {
+	tx := arenacadence.Render(burnTemplate, nil, r.contracts)
+
+	return flow.NewTransaction().
+		AddRawArgument(jsoncdc.MustEncode(amount)).
+		SetScript([]byte(tx)).
+		SetGasLimit(40)
+}
