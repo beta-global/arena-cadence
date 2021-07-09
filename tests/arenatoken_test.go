@@ -3,7 +3,6 @@ package tests
 import (
 	"context"
 	"flag"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -17,11 +16,6 @@ var dockerLogsOnFail = flag.Bool("dockerLogs", false, "Print docker container lo
 
 const initialBalance = "100000000000.00000000"
 
-func TestContractEmbed(t *testing.T) {
-	deploy := arenatoken.Contract(flow.HexToAddress(emulator.FungibleTokenAddr))
-	fmt.Println(deploy)
-}
-
 func TestContractDeploy(t *testing.T) {
 	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
 	defer teardown()
@@ -29,16 +23,6 @@ func TestContractDeploy(t *testing.T) {
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	if _, err := em.DeployContract(em.ServiceAccount, "ArenaToken", contractSource); err != nil {
 		t.Fatalf("failed to deploy contract: %v", err)
-	}
-}
-
-func TestCreateAccount(t *testing.T) {
-	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
-	defer teardown()
-
-	newAcct := AddAccount(t, em)
-	if newAcct == flow.EmptyAddress {
-		t.Fatalf("Expected non-empty address")
 	}
 }
 
@@ -99,6 +83,14 @@ func TestMintArena(t *testing.T) {
 		if bal.String() != "100000000100.00000000" {
 			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", "100000000100.00000000", bal.String())
 		}
+
+		// check expected events
+		validateEvents(t, result, []string{
+			"MinterCreated",
+			"TokensMinted",
+			"TokensDeposited",
+		})
+
 	})
 
 	t.Run("MintToNonAdmin", func(t *testing.T) {
@@ -136,6 +128,14 @@ func TestMintArena(t *testing.T) {
 		if bal.String() != amt.String() {
 			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", amt.String(), bal.String())
 		}
+
+		// check expected events
+		validateEvents(t, result, []string{
+			"MinterCreated",
+			"TokensMinted",
+			"TokensDeposited",
+		})
+
 	})
 
 	// TODO: Test mint greater than minter allows
@@ -261,6 +261,12 @@ func TestTransfer(t *testing.T) {
 			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", amount, bal)
 		}
 
+		// check expected events
+		validateEvents(t, result, []string{
+			"TokensWithdrawn",
+			"TokensDeposited",
+		})
+
 		// Transfer some back
 		amount, _ = cadence.NewUFix64("60.0")
 		tx = txRenderer.Transfer(em.ServiceAccount, amount)
@@ -281,6 +287,12 @@ func TestTransfer(t *testing.T) {
 		if bal != expect {
 			t.Fatalf("Incorrect balance after minting, expected: %s, got: %s", expect, bal)
 		}
+
+		// check expected events
+		validateEvents(t, result, []string{
+			"TokensWithdrawn",
+			"TokensDeposited",
+		})
 	})
 
 	t.Run("TransferUnitializedAccount", func(t *testing.T) {
@@ -479,4 +491,26 @@ func TestTransferAdmininstrator(t *testing.T) {
 		t.Fatalf("Expected old admin mint to revert but did not")
 	}
 
+}
+
+func TestCreateAccount(t *testing.T) {
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
+	defer teardown()
+
+	newAcct := AddAccount(t, em)
+	if newAcct == flow.EmptyAddress {
+		t.Fatalf("Expected non-empty address")
+	}
+}
+
+func validateEvents(t *testing.T, result *flow.TransactionResult, expected []string) {
+
+	if len(result.Events) != len(expected) {
+		t.Fatalf("Unexpected number of events")
+	}
+	for i, e := range result.Events {
+		if !strings.Contains(e.Type, expected[i]) {
+			t.Fatalf("Expected event type: %s, got: %s", expected[i], e.Type)
+		}
+	}
 }
