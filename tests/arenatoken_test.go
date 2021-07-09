@@ -138,8 +138,6 @@ func TestMintArena(t *testing.T) {
 
 	})
 
-	// TODO: Test mint greater than minter allows
-
 	t.Run("MintToUninitializedAccount", func(t *testing.T) {
 
 		// create a new account without a vault
@@ -162,6 +160,82 @@ func TestMintArena(t *testing.T) {
 		}
 	})
 
+}
+
+func TestBurn(t *testing.T) {
+
+	em, teardown := emulator.NewUnit(t, "3569", *dockerLogsOnFail)
+	defer teardown()
+
+	// Deploy ArenaToken contract to service account
+	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
+	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
+	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+
+	t.Run("Burn", func(t *testing.T) {
+
+		oldBalance := arenaBalance(t, em, em.ServiceAccount)
+
+		amt, _ := cadence.NewUFix64("10.0")
+		tx := txRenderer.Burn(amt)
+		signers := emulator.TxSigners{
+			Proposer:    em.ServiceAccount,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{em.ServiceAccount},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("burn_arena tx execution: %v", result.Error)
+		}
+
+		// Validate new balance
+		newBalance := arenaBalance(t, em, em.ServiceAccount)
+		target := oldBalance - amt
+		if newBalance != target {
+			t.Fatalf("Incorrect balance after burning, expected: %s, got: %s", target, newBalance)
+		}
+
+		// check expected events
+		validateEvents(t, result, []string{
+			"TokensWithdrawn",
+			"BurnerCreated",
+			"TokensBurned",
+		})
+
+	})
+
+	t.Run("NonAdminBurn", func(t *testing.T) {
+
+		// create a new account and perform account setup
+		newAcct := AddAccount(t, em)
+		tx := txRenderer.SetupAccount()
+		signers := emulator.TxSigners{
+			Proposer:    newAcct,
+			Payer:       em.ServiceAccount,
+			Authorizers: []flow.Address{newAcct},
+		}
+		em.SignTx(signers, tx)
+		result := em.ExecuteTxWaitForSeal(tx)
+		if result.Error != nil {
+			t.Fatalf("setup_account tx execution: %v", result.Error)
+		}
+
+		// Have user account attempt create burner. Should revert
+		amt, _ := cadence.NewUFix64("10.0")
+		tx = txRenderer.Burn(amt)
+		signers = emulator.TxSigners{
+			Proposer:    newAcct,
+			Payer:       newAcct,
+			Authorizers: []flow.Address{newAcct},
+		}
+		em.SignTx(signers, tx)
+		result = em.ExecuteTxWaitForSeal(tx)
+		if result.Error == nil {
+			t.Fatalf("expected burn to revert but did not")
+		}
+
+	})
 }
 
 func TestBalance(t *testing.T) {
