@@ -13,6 +13,7 @@ import (
 
 var (
 	fungibleTokenAddr = flow.HexToAddress("0x9a0766d93b6608b7")
+	arenaTokenAddr    = flow.HexToAddress("0x0996b5100d5c8ad6")
 	testnetRPC        = "access.devnet.nodes.onflow.org:9000"
 )
 
