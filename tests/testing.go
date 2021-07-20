@@ -27,7 +27,7 @@ func AddAccount(t *testing.T, em *emulator.Emulator) flow.Address {
 func arenaBalance(t *testing.T, em *emulator.Emulator, target flow.Address) cadence.UFix64 {
 	t.Helper()
 
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 	balanceScript, args := txRenderer.Balance(target)
 	val, err := em.Client.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
 	if err != nil {

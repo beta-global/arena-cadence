@@ -37,7 +37,7 @@ func TestSetupAccount(t *testing.T) {
 	// create a new account and run the setup_account transaction
 	newAcct := AddAccount(t, em)
 
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 	tx := txRenderer.SetupAccount()
 	signers := emulator.TxSigners{
 		Proposer:    newAcct,
@@ -61,7 +61,7 @@ func TestMintArena(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	t.Run("MintToAdministrator", func(t *testing.T) {
 
@@ -170,7 +170,7 @@ func TestBurn(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	t.Run("Burn", func(t *testing.T) {
 
@@ -246,7 +246,7 @@ func TestBalance(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	t.Run("BalanceInitializedAccount", func(t *testing.T) {
 
@@ -297,7 +297,7 @@ func TestTransfer(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	t.Run("TransferInitializedAccount", func(t *testing.T) {
 
@@ -436,7 +436,7 @@ func TestDestroyAdministrator(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	// Check that current admin can do admin tasks, i.e. create minter
 	amount, _ := cadence.NewUFix64("1000.0")
@@ -496,7 +496,7 @@ func TestTransferAdmininstrator(t *testing.T) {
 	// Deploy ArenaToken contract to service account
 	contractSource := arenatoken.Contract(em.Contracts["FungibleToken"])
 	DeployContract(t, em, em.ServiceAccount, "ArenaToken", contractSource)
-	txRenderer := arenatoken.NewRenderer(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
+	txRenderer := arenatoken.New(em.Contracts["ArenaToken"], em.Contracts["FungibleToken"])
 
 	// Check that current admin can do admin tasks, i.e. create minter
 	amount, _ := cadence.NewUFix64("1000.0")

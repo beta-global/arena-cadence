@@ -12,6 +12,11 @@ import (
 	"google.golang.org/grpc"
 )
 
+const (
+	sampleAdminPrivkey = "8df3e8728ce2a9271107861a3c11c5def5c92120ba911ffff3beb5267e87680d"
+	sampleUserPrivekey = "a5d734436c43463019bc161294e22cad504d3d956a5d3e7f3a71989f83eaca44"
+)
+
 func TestAdminActions(t *testing.T) {
 
 	// establish testnet connection and load necessary keys
@@ -20,7 +25,7 @@ func TestAdminActions(t *testing.T) {
 		t.Fatalf("Creating testnet client: %v", err)
 	}
 	adminAddr := flow.HexToAddress("0x0996b5100d5c8ad6")
-	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "8df3e8728ce2a9271107861a3c11c5def5c92120ba911ffff3beb5267e87680d")
+	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleAdminPrivkey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
@@ -30,7 +35,7 @@ func TestAdminActions(t *testing.T) {
 		flowclient: flowclient,
 		privkeys:   keys,
 	}
-	txRenderer := arenatoken.NewRenderer(adminAddr, fungibleTokenAddr)
+	txRenderer := arenatoken.New(adminAddr, fungibleTokenAddr)
 
 	t.Run("MintToAdmin", func(t *testing.T) {
 		// fetch the current balance
@@ -120,13 +125,13 @@ func TestStandardUserFlow(t *testing.T) {
 	}
 
 	adminAddr := flow.HexToAddress("0x0996b5100d5c8ad6")
-	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "8df3e8728ce2a9271107861a3c11c5def5c92120ba911ffff3beb5267e87680d")
+	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleAdminPrivkey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
 
 	userAddr := flow.HexToAddress("0x15b169c50310d253")
-	userPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "a5d734436c43463019bc161294e22cad504d3d956a5d3e7f3a71989f83eaca44")
+	userPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleUserPrivekey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
@@ -140,7 +145,7 @@ func TestStandardUserFlow(t *testing.T) {
 		flowclient: flowclient,
 		privkeys:   keys,
 	}
-	txRenderer := arenatoken.NewRenderer(adminAddr, fungibleTokenAddr)
+	txRenderer := arenatoken.New(adminAddr, fungibleTokenAddr)
 
 	t.Run("SetupAccount", func(t *testing.T) {
 
@@ -219,13 +224,13 @@ func TestStandardUserFlowAdminPaysFees(t *testing.T) {
 	}
 
 	adminAddr := flow.HexToAddress("0x0996b5100d5c8ad6")
-	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "8df3e8728ce2a9271107861a3c11c5def5c92120ba911ffff3beb5267e87680d")
+	adminPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleAdminPrivkey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
 
 	userAddr := flow.HexToAddress("0x15b169c50310d253")
-	userPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "a5d734436c43463019bc161294e22cad504d3d956a5d3e7f3a71989f83eaca44")
+	userPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleUserPrivekey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
@@ -239,7 +244,7 @@ func TestStandardUserFlowAdminPaysFees(t *testing.T) {
 		flowclient: flowclient,
 		privkeys:   keys,
 	}
-	txRenderer := arenatoken.NewRenderer(adminAddr, fungibleTokenAddr)
+	txRenderer := arenatoken.New(adminAddr, fungibleTokenAddr)
 
 	t.Run("SetupAccount", func(t *testing.T) {
 
@@ -312,7 +317,7 @@ func TestStandardUserFlowAdminPaysFees(t *testing.T) {
 func arenaBalance(t *testing.T, tc *testnetClient, target flow.Address) cadence.UFix64 {
 	t.Helper()
 
-	txRenderer := arenatoken.NewRenderer(arenaTokenAddr, fungibleTokenAddr)
+	txRenderer := arenatoken.New(arenaTokenAddr, fungibleTokenAddr)
 	balanceScript, args := txRenderer.Balance(target)
 	val, err := tc.flowclient.ExecuteScriptAtLatestBlock(context.Background(), balanceScript, args)
 	if err != nil {
@@ -330,7 +335,7 @@ func TestDeploy(t *testing.T) {
 		t.Fatalf("Creating testnet client: %v", err)
 	}
 	testnetAddr := flow.HexToAddress("0x0996b5100d5c8ad6")
-	testnetPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, "8df3e8728ce2a9271107861a3c11c5def5c92120ba911ffff3beb5267e87680d")
+	testnetPrivkey, err := crypto.DecodePrivateKeyHex(crypto.ECDSA_P256, sampleAdminPrivkey)
 	if err != nil {
 		t.Fatalf("Failed to decode private key: %v", err)
 	}
