@@ -5,7 +5,9 @@ import (
 	"github.com/onflow/flow-go-sdk"
 )
 
-func (r *Renderer) SetupAccount() *flow.Transaction {
+// SetupAccount returns an unsigned transaction that prepares a user account
+// for sending and receiving ArenaTokens.
+func (r *ArenaToken) SetupAccount() *flow.Transaction {
 	tx := arenacadence.Render(setupAccountTemplate, nil, r.contracts)
 	return flow.NewTransaction().
 		SetScript([]byte(tx)).

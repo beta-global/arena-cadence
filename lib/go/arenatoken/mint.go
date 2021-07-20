@@ -7,7 +7,9 @@ import (
 	"github.com/onflow/flow-go-sdk"
 )
 
-func (r *Renderer) MintTokens(recipient flow.Address, amount cadence.UFix64) *flow.Transaction {
+// Mint returns an unsigned transaction for minting new tokens. Only an account holding
+// the singular Admin resource can execute this transaction
+func (r *ArenaToken) MintTokens(recipient flow.Address, amount cadence.UFix64) *flow.Transaction {
 	tx := arenacadence.Render(mintArenaTemplate, nil, r.contracts)
 
 	// convert args to cadence compatible forms
@@ -18,5 +20,5 @@ func (r *Renderer) MintTokens(recipient flow.Address, amount cadence.UFix64) *fl
 		AddRawArgument(jsoncdc.MustEncode(cadence.NewAddress(buf))).
 		AddRawArgument(jsoncdc.MustEncode(amount)).
 		SetScript([]byte(tx)).
-		SetGasLimit(100)
+		SetGasLimit(60)
 }
