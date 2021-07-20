@@ -1,7 +1,6 @@
 package arenatoken
 
 import (
-	arenacadence "github.com/arena/arena-cadence"
 	"github.com/onflow/cadence"
 	jsoncdc "github.com/onflow/cadence/encoding/json"
 	"github.com/onflow/flow-go-sdk"
@@ -10,7 +9,7 @@ import (
 // Mint returns an unsigned transaction for minting new tokens. Only an account holding
 // the singular Admin resource can execute this transaction
 func (r *ArenaToken) MintTokens(recipient flow.Address, amount cadence.UFix64) *flow.Transaction {
-	tx := arenacadence.Render(mintArenaTemplate, nil, r.contracts)
+	tx := render(mintArenaTemplate, nil, r.contracts)
 
 	// convert args to cadence compatible forms
 	var buf [cadence.AddressLength]byte
